@@ -67,10 +67,12 @@ class MyNet(keras.Model):
         for i in range(4):
             self.mLayers.append(MyDense(5))
         self.mLayers.append(keras.layers.Dense(1))
+        self.KlLoss = []
 
     def call(self, inputs, training=False, mask=None):
         for layer in self.mLayers:
             inputs = layer(inputs)
+            self.KlLoss.append(tf.multiply(tf.reduce_mean(inputs),0.01))
         return inputs
 
 
@@ -95,7 +97,8 @@ for e in range(epoch):
         with tf.GradientTape() as tape:
             logits = myNet(testTensor,training = True)
             loss = lossFun(logits,[[-1.0],[1.0]]) + tf.multiply(
-                tf.add_n([tf.nn.l2_loss(varias) for varias in myNet.trainable_weights]),0.001)
+                tf.add_n([tf.nn.l2_loss(varias) for varias in myNet.trainable_weights]),0.001) +\
+                tf.add_n([lo for lo in myNet.KlLoss])
             gradients = tape.gradient(loss,myNet.trainable_weights)
         optimizer.apply_gradients(zip(gradients,myNet.trainable_weights))
         if trainingTimes % 100. == 0.0 :
