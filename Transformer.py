@@ -52,7 +52,7 @@ class MultiHeadAttention(keras.Model) :
             tensors.append(self.selfAttentions[i]((self.QDenses[i](Q),
                                                    self.KDenses[i](K),
                                                    self.VDenses[i](V)),mask = mask))
-        concatTensor = tf.concat(tensors,axis=1)
+        concatTensor = tf.concat(tensors,axis=-1)
         return self.finalLiner(concatTensor)
 
 class FeedForward(keras.Model) :
@@ -150,9 +150,9 @@ class Transformer(keras.Model) :
         encoderS1 = self.encoder1(encoderS0,training)
         decoderS0 = self.decoder0((outputEmbeddingMatrix,encoderS1),training,mask)
         decoderS1 = self.decoder1((decoderS0,encoderS1),training,mask)
-        mT = decoderS1.shape[0]
-        dM = decoderS1.shape[1]
-        flattenTensor = tf.reshape(decoderS1,shape=[1,mT * dM])
+        mT = decoderS1.shape[1]
+        dM = decoderS1.shape[2]
+        flattenTensor = tf.reshape(decoderS1,shape=[-1,mT * dM])
         x = self.outDense(flattenTensor)
         x = tf.nn.softmax(x)
         return x
@@ -161,19 +161,22 @@ class Transformer(keras.Model) :
 
 if __name__ == "__main__":
     ### This is an test.
-    ### The shape of testInputs is [maxTimes , wordEmbedding]
+    ### The shape of testInputs is [batchSize , maxTimes , wordEmbedding]
     ### The shape of testOutputs is the same as testInputs.
     ### The mask is at the 4-th step and the max times are 5.
     ### The thisStepsLabel is to simulate which word in the dictionary should be selected.
-    maskTest = tf.convert_to_tensor(np.array([[0, 0, 0, 0, -1e10],
-                                              [0, 0, 0, 0, -1e10],
-                                              [0, 0, 0, 0, -1e10],
-                                              [0, 0, 0, 0, -1e10],
-                                              [-1e10, -1e10, -1e10, -1e10, -1e10]], dtype=np.float32), dtype=tf.float32)
-    testInputs = np.array(np.random.randn(5, 8), dtype=np.float32)
-    testOutputs = np.array(np.random.randn(5 ,8),dtype=np.float32)
+    maskNp = [[[0, 0, 0, 0, -1e10],
+               [0, 0, 0, 0, -1e10],
+               [0, 0, 0, 0, -1e10],
+               [0, 0, 0, 0, -1e10],
+               [-1e10, -1e10, -1e10, -1e10, -1e10]]  for _ in range(3)]
+    maskTest = tf.convert_to_tensor(np.array(maskNp, dtype=np.float32), dtype=tf.float32)
+    testInputs = np.array(np.random.randn(3, 5, 8), dtype=np.float32)
+    testOutputs = np.array(np.random.randn(3, 5 ,8),dtype=np.float32)
     transformer = Transformer(8,5)
-    thisStepsLabel = [[0.0,0.0,0.0,1.0,0.0]]
+    thisStepsLabel = [[0.,0.,0.,1.,0.],
+                      [0.,1.,0.,0.,0.],
+                      [0.,0.,0.,0.,1.]]
     lossFun = keras.losses.MeanAbsoluteError()
     optimizer = keras.optimizers.Adam()
     trainingTimes = 0
