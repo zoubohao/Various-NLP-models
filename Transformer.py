@@ -3,9 +3,9 @@ from tensorflow import keras
 import numpy as np
 
 
-### Q:[ maxTimes , wordEmbedding ]
-### K:[ maxTimes , wordEmbedding ]
-### V:[ maxTimes , wordEmbedding ]
+### Q:[ b, maxTimes , wordEmbedding ]
+### K:[ b, maxTimes , wordEmbedding ]
+### V:[ b, maxTimes , wordEmbedding ]
 class SelfAttention(keras.Model) :
 
     def __init__(self):
@@ -22,7 +22,10 @@ class SelfAttention(keras.Model) :
     ### [-1e10,-1e10,-1e10,-1e10,-1e10]]
     def call(self, inputs, training=None, mask=None):
         Q , K , V = inputs
-        dk = Q.shape[1]
+        if len(Q.shape) == 2:
+            dk = Q.shape[1]
+        else:
+            dk = Q.shape[2]
         ### x : [m , m]
         x = tf.scalar_mul(1. / dk , tf.matmul(Q,K,transpose_b=True))
         if mask is not None :
@@ -57,17 +60,17 @@ class MultiHeadAttention(keras.Model) :
 
 class FeedForward(keras.Model) :
 
-    def __init__(self,dk):
+    def __init__(self,interMediumDim , outDim):
         super(FeedForward,self).__init__()
-        self.dense0 = keras.layers.Dense(dk)
+        self.dense0 = keras.layers.Dense(interMediumDim)
         self.bn0 = keras.layers.BatchNormalization()
         self.prelu0 = keras.layers.PReLU()
         self.dropout0 = keras.layers.Dropout(rate=0.5)
-        self.dense1 = keras.layers.Dense(dk)
+        self.dense1 = keras.layers.Dense(interMediumDim)
         self.bn1 = keras.layers.BatchNormalization()
         self.prelu1 = keras.layers.PReLU()
         self.dropout1 = keras.layers.Dropout(rate=0.5)
-        self.dense2 = keras.layers.Dense(dk)
+        self.dense2 = keras.layers.Dense(outDim)
 
 
     def call(self, inputs, training=None, mask=None):
@@ -83,19 +86,18 @@ class FeedForward(keras.Model) :
 
 class TransformerEncoder(keras.Model) :
 
-    def __init__(self,h,dk):
+    def __init__(self,h,interMediumDim,dk):
         super(TransformerEncoder,self).__init__()
         self.multiHead = MultiHeadAttention(h = h, dk=dk, outDim=dk)
-        self.feedforward = FeedForward(dk=dk)
+        self.feedforward = FeedForward(interMediumDim,dk)
         self.layerNorm0 = keras.layers.LayerNormalization()
         self.layerNorm1 = keras.layers.LayerNormalization()
 
+    ### The inputs consist of Q, K, V.
     def call(self, inputs, training=None, mask=None):
-        oriMatrix = tf.identity(inputs)
-        Q = tf.identity(inputs)
-        K = tf.identity(inputs)
-        V = tf.identity(inputs)
-        mutiHeadMatrix = self.multiHead((Q,K,V),training = training)
+        Q, K, V = inputs
+        oriMatrix = tf.identity(Q)
+        mutiHeadMatrix = self.multiHead((Q,K,V),training = training,mask = mask)
         addedTensor0 = tf.add(oriMatrix,mutiHeadMatrix)
         addedNormal0 = self.layerNorm0(addedTensor0)
         addedIdentity = tf.identity(addedNormal0)
@@ -106,11 +108,11 @@ class TransformerEncoder(keras.Model) :
 
 class TransformerDecoder(keras.Model) :
 
-    def __init__(self,h,dk):
+    def __init__(self,h,interMediumDim,dk):
         super(TransformerDecoder,self).__init__()
         self.maskedMultiHead = MultiHeadAttention(h,dk,dk)
         self.multiHead = MultiHeadAttention(h,dk,dk)
-        self.feedforward = FeedForward(dk)
+        self.feedforward = FeedForward(interMediumDim,dk)
         self.layerNorm0 = keras.layers.LayerNormalization()
         self.layerNorm1 = keras.layers.LayerNormalization()
         self.layerNorm2 = keras.layers.LayerNormalization()
@@ -134,22 +136,26 @@ class TransformerDecoder(keras.Model) :
 
 class Transformer(keras.Model) :
 
-    def __init__(self,dimOfWordEmbedding,outDim):
+    def __init__(self,interMediumDim,dimOfWordEmbedding,outDim):
         super(Transformer,self).__init__()
-        self.encoder0 = TransformerEncoder(h=8,dk=dimOfWordEmbedding)
-        self.encoder1 = TransformerEncoder(h=8,dk=dimOfWordEmbedding)
-        self.decoder0 = TransformerDecoder(h=8,dk=dimOfWordEmbedding)
-        self.decoder1 = TransformerDecoder(h=8,dk=dimOfWordEmbedding)
+        self.encoder0 = TransformerEncoder(h=8,dk=dimOfWordEmbedding,interMediumDim=interMediumDim)
+        self.encoder1 = TransformerEncoder(h=8,dk=dimOfWordEmbedding,interMediumDim=interMediumDim)
+        self.decoder0 = TransformerDecoder(h=8,dk=dimOfWordEmbedding,interMediumDim=interMediumDim)
+        self.decoder1 = TransformerDecoder(h=8,dk=dimOfWordEmbedding,interMediumDim=interMediumDim)
         self.outDense = keras.layers.Dense(outDim)
 
     ### The inputs are composed with inputsEmbeddingMatrix and outputEmbeddingMatrix
     ### inputs = (inputsEmbeddingMatrix, outputEmbeddingMatrix)
     def call(self, inputs, training=None, mask=None):
         inputsEmbeddingMatrix , outputEmbeddingMatrix = inputs
-        encoderS0 = self.encoder0(inputsEmbeddingMatrix,training)
-        encoderS1 = self.encoder1(encoderS0,training)
-        decoderS0 = self.decoder0((outputEmbeddingMatrix,encoderS1),training,mask)
-        decoderS1 = self.decoder1((decoderS0,encoderS1),training,mask)
+        encoderS0 = self.encoder0((inputsEmbeddingMatrix,
+                                   inputsEmbeddingMatrix,
+                                   inputsEmbeddingMatrix),training,mask = None)
+        encoderS1 = self.encoder1((encoderS0,
+                                   encoderS0,
+                                   encoderS0),training,mask = None)
+        decoderS0 = self.decoder0((outputEmbeddingMatrix,encoderS1),training,mask = mask)
+        decoderS1 = self.decoder1((decoderS0,encoderS1),training,mask = mask)
         mT = decoderS1.shape[1]
         dM = decoderS1.shape[2]
         flattenTensor = tf.reshape(decoderS1,shape=[-1,mT * dM])
@@ -173,7 +179,7 @@ if __name__ == "__main__":
     maskTest = tf.convert_to_tensor(np.array(maskNp, dtype=np.float32), dtype=tf.float32)
     testInputs = np.array(np.random.randn(3, 5, 8), dtype=np.float32)
     testOutputs = np.array(np.random.randn(3, 5 ,8),dtype=np.float32)
-    transformer = Transformer(8,5)
+    transformer = Transformer(8,8,5)
     thisStepsLabel = [[0.,0.,0.,1.,0.],
                       [0.,1.,0.,0.,0.],
                       [0.,0.,0.,0.,1.]]

@@ -134,7 +134,7 @@ if __name__ == "__main__" :
     epoch = 50
     timesInOneEpoch = 200
     for e in range(epoch):
-        for t in range(timesInOneEpoch):
+        for k in range(timesInOneEpoch):
             with tf.GradientTape() as tape:
                 logits = model(inputTest, training=True,states = initialState)
                 loss = lossFun(logits, [[-1.0], [1.0],[-1.0]]) + tf.multiply(
