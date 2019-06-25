@@ -163,7 +163,7 @@ if __name__ == "__main__":
                     config = opti.get_config()
                     config["learning_rate"] = learningRate * 0.99
                     opti = opti.from_config(config)
-                    print("Config LR : ",config["learning_rate"])
+                    print("Config LR : ",opti.get_config()["learning_rate"])
                 print("Times : ",trainingTimes)
                 print("Logits : ",Model((testInput,2),False,(mask0Test,mask1Test)))
                 print("Losses : ",losses)
