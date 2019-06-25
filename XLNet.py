@@ -146,9 +146,10 @@ if __name__ == "__main__":
                   numberOfLayers=2,selfAttentionSize=4,interMediumDim=8,
                   outDim=4)
     loss = LossDevice()
-    opti = keras.optimizers.Adam()
-    epoch = 5
-    timesInOneEpoch = 500
+    learningRate = 0.001
+    opti = tf.optimizers.Adam(learningRate,epsilon=1e-5,amsgrad=True)
+    epoch = 10
+    timesInOneEpoch = 1000
     trainingTimes = 0
     for e in range(epoch) :
         for ti in range(timesInOneEpoch) :
@@ -157,7 +158,12 @@ if __name__ == "__main__":
                 losses = loss((logits,testLabels)) + \
                     tf.add_n([tf.multiply(0.0001,tf.nn.l2_loss(varis))  for varis in Model.trainable_weights])
                 gradients = tape.gradient(losses,Model.trainable_weights)
-            if trainingTimes % 100 == 0:
+            if trainingTimes % 50 == 0:
+                if trainingTimes != 0 :
+                    config = opti.get_config()
+                    config["learning_rate"] = learningRate * 0.99
+                    opti = opti.from_config(config)
+                    print("Config LR : ",config["learning_rate"])
                 print("Times : ",trainingTimes)
                 print("Logits : ",Model((testInput,2),False,(mask0Test,mask1Test)))
                 print("Losses : ",losses)
