@@ -119,8 +119,15 @@ class XLNet (keras.Model) :
         tTensor = self.dense(flattenTensor)
         return tf.nn.softmax(tTensor)
 
+class LossDevice(keras.Model) :
 
+    def __init__(self):
+        super(LossDevice,self).__init__()
 
+    def call(self, inputs, training=None, mask=None):
+        logs , label = inputs
+        return tf.reduce_mean(tf.nn.weighted_cross_entropy_with_logits(label,logs,
+                                                                       tf.ones(logs.shape,dtype=tf.float32)))
 
 if __name__ == "__main__":
     testInput = np.array(np.random.randn(3,4,5),dtype=np.float32)
@@ -138,7 +145,7 @@ if __name__ == "__main__":
     Model = XLNet(batchSize=3,sLength=4,wordEmbeddingSize=5,
                   numberOfLayers=2,selfAttentionSize=4,interMediumDim=8,
                   outDim=4)
-    loss = keras.losses.MeanAbsoluteError()
+    loss = LossDevice()
     opti = keras.optimizers.Adam()
     epoch = 5
     timesInOneEpoch = 500
@@ -147,7 +154,7 @@ if __name__ == "__main__":
         for ti in range(timesInOneEpoch) :
             with tf.GradientTape() as tape :
                 logits = Model((testInput,2),True,(mask0Test,mask1Test))
-                losses = loss(logits,testLabels) + \
+                losses = loss((logits,testLabels)) + \
                     tf.add_n([tf.multiply(0.0001,tf.nn.l2_loss(varis))  for varis in Model.trainable_weights])
                 gradients = tape.gradient(losses,Model.trainable_weights)
             if trainingTimes % 100 == 0:
