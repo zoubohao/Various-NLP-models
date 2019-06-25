@@ -3,6 +3,44 @@ import numpy as np
 import Transformer as tsf
 from tensorflow import keras
 
+class TransformerXLEncoder(keras.Model) :
+
+    def __init__(self,sLength,
+                 numberOfLayers,selfAttentionSize,interMediumDim,
+                 wordEmbeddingSize):
+        super(TransformerXLEncoder,self).__init__()
+        self.L = numberOfLayers
+        self.tsfEncoderList = [tsf.TransformerEncoder(h=selfAttentionSize,
+                                                      interMediumDim=interMediumDim,
+                                                      dk=wordEmbeddingSize) for _ in range(numberOfLayers)]
+        self.cacheMatrix = [tf.zeros(shape=[sLength,wordEmbeddingSize],dtype=tf.float32)
+                            for _ in range(numberOfLayers)]
+        self.WQ = [keras.layers.Dense(wordEmbeddingSize) for _ in range(numberOfLayers)]
+        self.WK = [keras.layers.Dense(wordEmbeddingSize) for _ in range(numberOfLayers)]
+        self.WV = [keras.layers.Dense(wordEmbeddingSize) for _ in range(numberOfLayers)]
+
+    ### this inputs is inputsEmbeddingMatrix
+    ### shape of it is [b , max , wordEmbedding]
+    def call(self, inputs, training=None, mask=None):
+        sentenceMatrixList = tf.unstack(inputs,axis=0)
+        outList = []
+        ### operation in batch dimension.
+        for ht in sentenceMatrixList:
+            ### operations in n transformer encoder layers.
+            for i in range(self.L):
+                ht_1 = self.cacheMatrix[i]
+                ht_1 = tf.stop_gradient(ht_1)
+                concatTensor = tf.concat([ht_1,ht],axis=-1)
+                QMatrix = self.WQ[i](concatTensor)
+                KMatrix = self.WK[i](concatTensor)
+                VMatrix = self.WV[i](concatTensor)
+                ht = self.tsfEncoderList[i]((QMatrix,KMatrix,VMatrix),training,mask = mask)
+                self.cacheMatrix[i] = ht
+            outList.append(ht)
+        encoderStates = tf.stack(outList,axis=0)
+        return encoderStates
+
+
 
 ### cache ht_1 : [n , hiddenStates]
 ### new ht : [n , hiddenState]
@@ -18,14 +56,11 @@ class TransformerXL(keras.Model) :
                  outDim):
         super(TransformerXL,self).__init__()
         self.L = numberOfLayers
-        self.tsfEncoderList = [tsf.TransformerEncoder(h=selfAttentionSize,
-                                                      interMediumDim=interMediumDim,
-                                                      dk=wordEmbeddingSize) for _ in range(numberOfLayers)]
-        self.cacheMatrix = [tf.zeros(shape=[sLength,wordEmbeddingSize],dtype=tf.float32)
-                            for _ in range(numberOfLayers)]
-        self.WQ = [keras.layers.Dense(wordEmbeddingSize) for _ in range(numberOfLayers)]
-        self.WK = [keras.layers.Dense(wordEmbeddingSize) for _ in range(numberOfLayers)]
-        self.WV = [keras.layers.Dense(wordEmbeddingSize) for _ in range(numberOfLayers)]
+        self.transformerXLEncoder = TransformerXLEncoder(sLength=sLength,
+                                                        numberOfLayers=numberOfLayers,
+                                                        selfAttentionSize=selfAttentionSize,
+                                                        interMediumDim=interMediumDim,
+                                                        wordEmbeddingSize=wordEmbeddingSize)
         self.tsfDecoderList = [tsf.TransformerDecoder(h=selfAttentionSize,
                                                       interMediumDim=interMediumDim,
                                                       dk=wordEmbeddingSize) for _ in range(numberOfLayers)]
@@ -39,22 +74,7 @@ class TransformerXL(keras.Model) :
     ### The shape of output is the same as inputs
     def call(self, inputs, training=None, mask=None):
         inputsEmbeddingMatrix , outputEmbeddingMatrix = inputs
-        sentenceMatrixList = tf.unstack(inputsEmbeddingMatrix,axis=0)
-        outList = []
-        ### operation in batch dimension.
-        for ht in sentenceMatrixList:
-            ### operations in n transformer encoder layers.
-            for i in range(self.L):
-                ht_1 = self.cacheMatrix[i]
-                ht_1 = tf.stop_gradient(ht_1)
-                concatTensor = tf.concat([ht_1,ht],axis=-1)
-                QMatrix = self.WQ[i](concatTensor)
-                KMatrix = self.WK[i](concatTensor)
-                VMatrix = self.WV[i](concatTensor)
-                ht = self.tsfEncoderList[i]((QMatrix,KMatrix,VMatrix),training,mask = None)
-                self.cacheMatrix[i] = ht
-            outList.append(ht)
-        encoderStates = tf.stack(outList,axis=0)
+        encoderStates = self.transformerXLEncoder(inputsEmbeddingMatrix,training,mask = None)
         x = tf.identity(outputEmbeddingMatrix)
         for i in range(self.L):
             x = self.tsfDecoderList[i]((x,encoderStates),training,mask = mask)
@@ -64,12 +84,15 @@ class TransformerXL(keras.Model) :
         x = self.denseOut(x)
         return tf.nn.softmax(x)
 
+
+
+
 if __name__ == "__main__":
-    maskNp = [[[0, 0, 0, 0, -1e10],
+    maskNp = [[0, 0, 0, 0, -1e10],
                [0, 0, 0, 0, -1e10],
                [0, 0, 0, 0, -1e10],
                [0, 0, 0, 0, -1e10],
-               [-1e10, -1e10, -1e10, -1e10, -1e10]] for _ in range(3)]
+               [-1e10, -1e10, -1e10, -1e10, -1e10]]
     maskTest = tf.convert_to_tensor(np.array(maskNp, dtype=np.float32), dtype=tf.float32)
     testInputsEmbedding = np.array(np.random.randn(3, 5, 8), dtype=np.float32)
     testOutputsEmbedding = np.array(np.random.randn(3, 5, 8), dtype=np.float32)

@@ -28,7 +28,10 @@ class SelfAttention(keras.Model) :
             dk = Q.shape[2]
         ### x : [m , m]
         x = tf.scalar_mul(1. / dk , tf.matmul(Q,K,transpose_b=True))
+        ### this is an added operation to add mask into x tensor.
+        ### if x is three dimensions, the mask need also to be three dimension.
         if mask is not None :
+            assert len(x.shape) == len(mask.shape) , "The dimensions of x and mask are not same !!!"
             x = tf.add(x,mask)
         x = tf.nn.softmax(x)
         ### V : [m , dv]

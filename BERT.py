@@ -26,7 +26,7 @@ class BERT (keras.Model) :
         for l in range(self.L) :
             inputs = self.TseList[l]((inputs,
                                       inputs,
-                                      inputs),training)
+                                      inputs),training,mask)
         return inputs
 
 class PreTrainedModel(keras.Model) :
@@ -37,7 +37,7 @@ class PreTrainedModel(keras.Model) :
         self.dense = keras.layers.Dense(outDim)
 
     def call(self, inputs, training=None, mask=None):
-        toTensor = self.bert(inputs,training)
+        toTensor = self.bert(inputs,training,None)
         mT = toTensor.shape[1]
         wE = toTensor.shape[2]
         flattenTensor = tf.reshape(toTensor,[-1,mT * wE])

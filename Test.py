@@ -2,11 +2,11 @@ import tensorflow as tf
 from tensorflow import keras
 import numpy as np
 
-a = tf.convert_to_tensor(np.array(np.random.randn(3,5,6),dtype=np.float32))
-b = tf.convert_to_tensor(np.array(np.random.randn(3,5,6),dtype=np.float32))
-print(tf.matmul(a,b,transpose_b=True))
-dense = keras.layers.Dense(64)
-print(dense(a))
-
-
-
+maskNp = [[[0, 0, 0, 0, -1e10],
+           [0, 0, 0, 0, -1e10],
+           [0, 0, 0, 0, -1e10],
+           [0, 0, 0, 0, -1e10],
+           [-1e10, -1e10, -1e10, -1e10, -1e10]] for _ in range(3)]
+maskTest = tf.convert_to_tensor(np.array(maskNp, dtype=np.float32), dtype=tf.float32)
+x = tf.zeros(shape=[5,5],dtype=tf.float32)
+print(tf.add(x,maskTest))
