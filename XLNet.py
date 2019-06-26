@@ -207,8 +207,8 @@ if __name__ == "__main__":
     learningRate = 0.01
     optiA = tf.optimizers.Adam(learningRate,epsilon=1e-5,amsgrad=True)
     optiSGD = tf.optimizers.SGD(learningRate,momentum=0.96,nesterov=True)
-    epoch = 5
-    timesInOneEpoch = 500
+    epoch = 3
+    timesInOneEpoch = 300
     trainingTimes = 0
     for e in range(epoch) :
         for ti in range(timesInOneEpoch) :
@@ -225,14 +225,14 @@ if __name__ == "__main__":
                 print("Logits : ",Model((testInput,testTranslation,True),True,mask2Test))
                 print("Losses : ",losses)
             if trainingTimes <= epoch * timesInOneEpoch // 3 :
-                if trainingTimes % 200 == 0 :
+                if trainingTimes % 150 == 0 and trainingTimes != 0:
                     learningRate = learningRate * 0.95
                     config = optiA.get_config()
                     config["learning_rate"] = learningRate
                     optiA = optiA.from_config(config)
                 optiA.apply_gradients(zip(gradients, Model.trainable_weights))
             else:
-                if trainingTimes % 200 == 0 :
+                if trainingTimes % 150 == 0 and trainingTimes != 0:
                     learningRate = learningRate * 0.95
                     config = optiSGD.get_config()
                     config["learning_rate"] = learningRate
