@@ -180,41 +180,48 @@ class LossDevice(keras.Model) :
                                                                        tf.ones(logs.shape,dtype=tf.float32)))
 
 if __name__ == "__main__":
-    testInput = np.array(np.random.randn(3,4,5),dtype=np.float32)
-    testTranslation = np.array(np.random.randn(3,4,5),dtype=np.float32)
+    # testInput = np.array(np.random.randn(3,4,5),dtype=np.float32)
+    # testTranslation = np.array(np.random.randn(3,4,5),dtype=np.float32)
     testLabels = np.array([[1,0,0,0],
                            [0,0,0,1],
                            [0,0,1,0]],dtype=np.float32)
+    ### This mask is for query stream attention,it can not see itself.
     mask0Test = tf.convert_to_tensor(np.array([[-1e10,0,-1e10,-1e10],
                                                [0,-1e10,-1e10,-1e10],
                                                [-1e10,-1e10,-1e10,-1e10],
                                                [-1e10,-1e10,-1e10,-1e10]]),dtype=tf.float32)
+    ### This mask is for content stream attention, it can see itself .
     mask1Test = tf.convert_to_tensor(np.array([[0,0,-1e10,-1e10],
                                                [0,0,-1e10,-1e10],
                                                [-1e10,-1e10,0,-1e10],
                                                [-1e10,-1e10,-1e10,0]]),dtype=tf.float32)
-    mask2Test = tf.convert_to_tensor(np.array([[[0,0,-1e10,-1e10],
-                                               [0,0,-1e10,-1e10],
-                                               [-1e10,-1e10,-1e10,-1e10],
+    ### This mask is for fine-turing .
+    mask2Test = tf.convert_to_tensor(np.array([[[0,0,0,-1e10],
+                                               [0,0,0,-1e10],
+                                               [0,0,0,-1e10],
                                                [-1e10,-1e10,-1e10,-1e10]] for _ in range(3)]),dtype=tf.float32)
     # Model = XLNetPreTrain(batchSize=3,sLength=4,wordEmbeddingSize=5,
     #               numberOfTransformerLayers=3,selfAttentionSize=4,interMediumDim=8,
     #               outDim=4,numberOfMaskTwoStreamLayer=3)
     Model = XLNet(batchSize=3,sLength=4,wordEmbeddingSize=5,
-                  numberOfTransformerLayers=3,selfAttentionSize=3,interMediumDim=8,
-                  outDim=4,numberOfMaskTwoStreamLayer=3,numberOfDecoder=3)
+                  numberOfTransformerLayers=6,selfAttentionSize=8,interMediumDim=18,
+                  outDim=4,numberOfMaskTwoStreamLayer=7,numberOfDecoder=9)
     loss = LossDevice()
     learningRate = 0.01
     optiA = tf.optimizers.Adam(learningRate,epsilon=1e-5,amsgrad=True)
     optiSGD = tf.optimizers.SGD(learningRate,momentum=0.96,nesterov=True)
-    epoch = 3
-    timesInOneEpoch = 300
+    # print("Load weights . ")
+    # Model.load_weights("d:\\XLNet")
+    # print("Load weights completed .")
+    epoch = 10
+    timesInOneEpoch = 1000
     trainingTimes = 0
     for e in range(epoch) :
         for ti in range(timesInOneEpoch) :
             with tf.GradientTape() as tape :
                 # logits = Model((testInput,2,False),True,(mask0Test,mask1Test))
-                logits = Model((testInput,testTranslation,True),True,mask2Test)
+                logits = Model((np.array(np.random.randn(3,4,5),dtype=np.float32),
+                                np.array(np.random.randn(3, 4, 5), dtype=np.float32),True),True,mask2Test)
                 losses = loss((logits,testLabels)) + \
                     tf.add_n([tf.multiply(0.0001,tf.nn.l2_loss(varis))  for varis in Model.trainable_weights])
                 gradients = tape.gradient(losses,Model.trainable_weights)
@@ -222,22 +229,27 @@ if __name__ == "__main__":
                 print("Config LR : ", learningRate)
                 print("Times : ",trainingTimes)
                 # print("Logits : ",Model((testInput,2,False),False,(mask0Test,mask1Test)))
-                print("Logits : ",Model((testInput,testTranslation,True),True,mask2Test))
+                print("Logits : ",Model((np.array(np.random.randn(3,4,5),dtype=np.float32),
+                                         np.array(np.random.randn(3, 4, 5), dtype=np.float32),True),False,mask2Test))
                 print("Losses : ",losses)
-            if trainingTimes <= epoch * timesInOneEpoch // 3 :
-                if trainingTimes % 150 == 0 and trainingTimes != 0:
+            if trainingTimes <= epoch * timesInOneEpoch // 2 :
+                if trainingTimes % 700 == 0 and trainingTimes != 0:
                     learningRate = learningRate * 0.95
                     config = optiA.get_config()
                     config["learning_rate"] = learningRate
                     optiA = optiA.from_config(config)
                 optiA.apply_gradients(zip(gradients, Model.trainable_weights))
             else:
-                if trainingTimes % 150 == 0 and trainingTimes != 0:
+                if trainingTimes % 800 == 0 and trainingTimes != 0:
                     learningRate = learningRate * 0.95
                     config = optiSGD.get_config()
                     config["learning_rate"] = learningRate
                     optiSGD = optiSGD.from_config(config)
                 optiSGD.apply_gradients(zip(gradients, Model.trainable_weights))
+            if trainingTimes % 1000 == 0 :
+                print("Saving....")
+                Model.save_weights("d:\\XLNet")
+                print("Saving completed.")
             trainingTimes += 1
 
 
