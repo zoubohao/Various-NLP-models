@@ -6,6 +6,13 @@ import TransformerXL as tsfXL
 
 
 class QueryStreamTransformerXLEncoder (keras.Model) :
+    """
+    In the call function,
+    ### The inputs consist of double component.
+    ### The first is a sentence , the shape of it is [b , maxTimes , wordEmbedding]
+    ### The second is a G_Matrix. The shape is [b , maxTimes , wordEmbedding], but
+    ### it is an trainable weight.
+    """
 
     def __init__(self,batchSize,sLength,wordEmbeddingSize,
                  numberOfTransformerLayers,selfAttentionSize,interMediumDim):
@@ -53,6 +60,20 @@ class QueryStreamTransformerXLEncoder (keras.Model) :
         return encoderStates
 
 class MaskedTwoStreamAttention(keras.Model):
+    """
+    In the call function,
+    ### The inputs consist of four components.
+    ### The first is a sentence , the shape of it is [b , maxTimes , wordEmbedding]
+    ### The second is a G_Matrix. The shape is [b , maxTimes , wordEmbedding], but
+    ### it is an trainable weight.
+    ### The third is position that needs to predict.
+    ### The four is if the model is in fine-tuning.
+    ##################################################
+    #### Mask is composed by mask0 and mask1.        #
+    #### The mask0 is for query stream attention     #
+    #### The mask1 is for content stream attention   #
+    ##################################################
+    """
 
     def __init__(self,batchSize,sLength,wordEmbeddingSize,
                  numberOfTransformerLayers,selfAttentionSize,interMediumDim):
@@ -99,6 +120,12 @@ class MaskedTwoStreamAttention(keras.Model):
 
 
 class XLNetEncoder (keras.Model) :
+    """
+    In the call fucntion,
+    ### the inputs are composed by batch of sentences, a predictPosition and a ifFinetuning parameter.
+    ### the shape of batch of sentences is [b , maxTimes , wordEmbedding]
+    ### the return is a hiddenTensor which shape is [b , maxTimes, wordEmbedding]
+    """
 
     def __init__(self,batchSize,sLength,wordEmbeddingSize,
                  numberOfTransformerLayers,selfAttentionSize,interMediumDim,
@@ -124,6 +151,11 @@ class XLNetEncoder (keras.Model) :
         return gStates
 
 class XLNetPreTrain(keras.Model) :
+    """
+    In the call function
+    ### the inputs are composed by batch of sentences, a predictPosition and a ifFinetuning parameter.
+    ### the shape of batch of sentences is [b , maxTimes , wordEmbedding]
+    """
 
     def __init__(self,batchSize,sLength,wordEmbeddingSize,
                  numberOfTransformerLayers,selfAttentionSize,interMediumDim,
@@ -135,7 +167,7 @@ class XLNetPreTrain(keras.Model) :
         self.dense = keras.layers.Dense(outDim)
 
     ### the inputs are composed by batch of sentences, a predictPosition and a ifFinetuning parameter.
-    ### the shape of inputs is [b , maxTimes , wordEmbedding]
+    ### the shape of batch of sentences is [b , maxTimes , wordEmbedding]
     def call(self, inputs, training=None, mask=None):
         encoderState = self.encoder(inputs,training,mask)
         flatten = tf.reshape(encoderState, shape=[-1, encoderState.shape[1] * encoderState.shape[2]])
@@ -143,6 +175,12 @@ class XLNetPreTrain(keras.Model) :
         return tf.nn.softmax(decoder)
 
 class XLNet(keras.Model) :
+    """
+    In the call fucntion,
+    ### the inputs are composed by batch of sentences , a translation sentence and a ifFinetuning parameter.
+    ### the shape of inputs is [b , maxTimes , wordEmbedding]
+    ### This mask only has one mask which maintains the auto regression attribute.
+    """
 
     def __init__(self,batchSize,sLength,wordEmbeddingSize,
                  numberOfTransformerLayers,selfAttentionSize,interMediumDim,

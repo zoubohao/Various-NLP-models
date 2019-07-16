@@ -6,10 +6,18 @@ import numpy as np
 
 ### input shape : [batchSize ,  maxTimeSteps , embeddingNumber]
 class EncoderNet(keras.Model):
+    """
+        ### The for loop is implement in the dimension of maxTimeSteps
+        ### Input needs shaped into [maxTimeSteps , batchSize , embeddingNumber]
+        ### The shape of states is [batchSize , units]
+    """
 
     def __init__(self,units):
+        """
+
+        :param units: ### The units mean that the out space of tensor
+        """
         super(EncoderNet,self).__init__()
-        ### The units mean that the out space of tensor
         self.cell0 = keras.layers.GRUCell(units,dropout=0.2,recurrent_dropout=0.3)
         self.cell1 = keras.layers.GRUCell(units,dropout=0.2,recurrent_dropout=0.3)
 
@@ -33,6 +41,10 @@ class EncoderNet(keras.Model):
 
 ### InputShape : [batchSize , concat(Si_1Tensor.shape[1], HiddenTensors.shape[1])]
 class FeedForward(keras.Model) :
+    """
+    In the call function,
+    ### InputShape : [batchSize , concat(Si_1Tensor.shape[1], HiddenTensors.shape[1])]
+    """
 
     def __init__(self,outputDim):
         super(FeedForward,self).__init__()
@@ -57,6 +69,12 @@ class FeedForward(keras.Model) :
 ### Si_1Tensor : [batchSize , sunits]
 ### HiddenTenors : [maxTimesSteps , batchSize , hunits]
 class Attention(keras.Model) :
+    """
+    In the call function ,
+    ### Input is a list : [Si_1Tensor , HiddenTensors]
+    ### Si_1Tensor : [batchSize , sunits]
+    ### HiddenTenors : [maxTimesSteps , batchSize , hunits]
+    """
 
     def __init__(self):
         super(Attention,self).__init__()
@@ -86,6 +104,12 @@ class Attention(keras.Model) :
 ### Si_1Tensor : [batchSize , sunits]
 ### HiddenTenors : [maxTimesSteps , batchSize , hunits]
 class DecoderNet(keras.Model) :
+    """
+    In the call funciton ,
+    ### Input is a list : [S0 , HiddenTensors]
+    ### Si_1Tensor : [batchSize , sunits]
+    ### HiddenTenors : [maxTimesSteps , batchSize , hunits]
+    """
 
     def __init__(self,units,times):
         super(DecoderNet,self).__init__()

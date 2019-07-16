@@ -9,6 +9,19 @@ import Transformer as tsf
 ### the training of this huge encoder is tough.
 ### So, this can be an pre-trained model.
 class BERT (keras.Model) :
+    """
+### BERT is just an transformer encoder.
+### However, this encoder has prodigious parameters and
+### the training of this huge encoder is tough.
+### So, this can be an pre-trained model.
+
+
+    ### inputs are consisted of batch of sentences and it must contains some masked words.
+    ### In this case, this mask parameter is useless because the inputs have changed some words
+    ### in the sentences into symbol of [MASK].
+    ### the shape of inputs is [batchSize , maxTimes , wordEmbedding]
+    ### the shape of return tensor is the same as inputs .
+    """
 
     def __init__(self,numberOfLayers,hiddenSize,numberOfSelfAttentionSize):
         super(BERT,self).__init__()
@@ -17,11 +30,6 @@ class BERT (keras.Model) :
                                                interMediumDim=4 * hiddenSize,
                                                dk = hiddenSize)  for _ in range(numberOfLayers)]
 
-    ### inputs are consisted of batch of sentences and it must contains some masked words.
-    ### In this case, this mask parameter is useless because the inputs have changed some words
-    ### in the sentences into symbol of [MASK].
-    ### the shape of inputs is [batchSize , maxTimes , wordEmbedding]
-    ### the shape of return tensor is the same as inputs .
     def call(self, inputs, training=None, mask=None):
         for l in range(self.L) :
             inputs = self.TseList[l]((inputs,

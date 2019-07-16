@@ -5,11 +5,15 @@ import numpy as np
 a = [1,2,3,4]
 b = [2,3,4,5]
 def create_padding_mask(seq):
-    seq = tf.cast(tf.math.equal(seq, 0), tf.float32)
+    """
     # add extra dimensions so that we can add the padding
     # to the attention logits.
     # tf.newaxis is an place holder, it can add in one of tensor shape and changes the shape of this tensor.
     # But, it can only add 1 in shape of one tensor.
+    :param seq:
+    :return:
+    """
+    seq = tf.cast(tf.math.equal(seq, 0), tf.float32)
     return seq[:,tf.newaxis,tf.newaxis :]  # (batch_size, 1, 1, seq_len)
 print("Create Mask : " , create_padding_mask([[4,3,2,0,0],[3,4,5,6,1]]))
 print("Reshape Tensor : ",tf.reshape(create_padding_mask([[4,3,2,0,0],[3,4,5,6,1]]),[5,2]))
@@ -28,12 +32,15 @@ def pythonControlFlow(x,threshold):
 class MyDense(keras.layers.Layer):
 
     def __init__(self,units):
+        """
     ### dynamic: Set this to `True` if your layer should only be run eagerly, and
     ### should not be used to generate a static computation graph.
     ### This would be the case for a Tree-RNN or a recursive network,
     ### for example, or generally for any layer that manipulates tensors
     ### using Python control flow. If `False`, we assume that the layer can
     ### safely be used to generate a static computation graph.
+        :param units:
+        """
         super(MyDense,self).__init__(dynamic=False)
         self.units = units
         self.w = None

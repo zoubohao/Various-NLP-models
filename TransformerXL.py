@@ -4,6 +4,11 @@ import Transformer as tsf
 from tensorflow import keras
 
 class TransformerXLEncoder(keras.Model) :
+    """
+    In the call function,
+    ### this inputs is inputsEmbeddingMatrix
+    ### shape of it is [b , max , wordEmbedding]
+    """
 
     def __init__(self,sLength,
                  numberOfLayers,selfAttentionSize,interMediumDim,
@@ -49,6 +54,22 @@ class TransformerXLEncoder(keras.Model) :
 ### For dealing this problem, we need to use an W. to down sample the double maxTimes size into maxTimes size.
 
 class TransformerXL(keras.Model) :
+    """
+    ### cache ht_1 : [n , hiddenStates]
+    ### new ht : [n , hiddenState]
+    ### hiddenStates : [maxTimes , hiddenUnits]
+    ### if concat ht_1 and ht , the length will be overflowed the maxTimes size.
+    ### For dealing this problem, we need to use an W. to down sample the double maxTimes size into maxTimes size.
+
+
+    In the call function,
+    ### The inputs are composed with inputsEmbeddingMatrix and outputEmbeddingMatrix
+    ### inputs = (inputsEmbeddingMatrix, outputEmbeddingMatrix)
+    ### the shape of inputsEmbeddingMatrix is [batchSize , sLength , embedding]
+    ### The TransformerXL is to use the information from before matrix
+    ### and dose not calculate gradients of before matrix .
+    ### The shape of output is the same as inputs
+    """
 
     def __init__(self,sLength,
                  numberOfLayers,selfAttentionSize,interMediumDim,

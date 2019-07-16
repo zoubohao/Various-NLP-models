@@ -7,8 +7,23 @@ import numpy as np
 ### K:[ b, maxTimes , wordEmbedding ]
 ### V:[ b, maxTimes , wordEmbedding ]
 class SelfAttention(keras.Model) :
-
+    """
+    ### Q:[ b, maxTimes , wordEmbedding ]
+    ### K:[ b, maxTimes , wordEmbedding ]
+    ### V:[ b, maxTimes , wordEmbedding ]
+    """
     def __init__(self):
+        """
+    ### mask : it is an mask which o prevent rightward information flow in the decoder to
+    ### preserve the auto-regressive property
+    ### As usual, it is an SUB-MATRIX in the whole matrix.
+    ### if the time is at 4 step , the max times is 5 . The mask needs to be like this:
+    ###[[0, 0, 0, 0, -1e10],
+    ### [0, 0, 0, 0, -1e10],
+    ### [0, 0, 0, 0, -1e10],
+    ### [0, 0, 0, 0, -1e10],
+    ### [-1e10,-1e10,-1e10,-1e10,-1e10]]
+        """
         super(SelfAttention,self).__init__()
 
     ### mask : it is an mask which o prevent rightward information flow in the decoder to
@@ -88,6 +103,9 @@ class FeedForward(keras.Model) :
         return self.dense2(x)
 
 class TransformerEncoder(keras.Model) :
+    """
+    In the call function , ### The inputs consist of Q, K, V.
+    """
 
     def __init__(self,h,interMediumDim,dk):
         super(TransformerEncoder,self).__init__()
@@ -110,6 +128,11 @@ class TransformerEncoder(keras.Model) :
         return addedNormal1
 
 class TransformerDecoder(keras.Model) :
+    """
+    In the call function ,
+    ### the inputs are composed by original matrix and encoded states which encoded from encoder.
+    ### inputs = (origMatrix , encodedMatrix)
+    """
 
     def __init__(self,h,interMediumDim,dk):
         super(TransformerDecoder,self).__init__()
@@ -138,6 +161,11 @@ class TransformerDecoder(keras.Model) :
         return self.layerNorm2(tf.add(addedNormal1,feedforward))
 
 class Transformer(keras.Model) :
+    """
+    In the call function ,
+    ### The inputs are composed with inputsEmbeddingMatrix and outputEmbeddingMatrix
+    ### inputs = (inputsEmbeddingMatrix, outputEmbeddingMatrix)
+    """
 
     def __init__(self,interMediumDim,dimOfWordEmbedding,outDim):
         super(Transformer,self).__init__()
